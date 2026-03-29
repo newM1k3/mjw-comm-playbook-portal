@@ -1,0 +1,1 @@
+# mjw-comm-playbook-portal\n\nCommunication Playbook Portal - Multi-user SaaS learning portal with AI tools.\n\nPart of the MJW Platform consolidation.\n
