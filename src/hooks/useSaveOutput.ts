@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { pb } from '../lib/pocketbase';
 import { useAuth } from '../contexts/AuthContext';
 
 export function useSaveOutput() {
@@ -13,16 +13,17 @@ export function useSaveOutput() {
   ) => {
     if (!user) return;
 
-    const { error } = await supabase.from('saved_outputs').insert({
-      user_id: user.id,
-      tool_name: toolName,
-      output_content: outputContent,
-      input_summary: inputSummary ?? null,
-    });
-
-    if (!error) {
+    try {
+      await pb.collection('saved_outputs').create({
+        user_id: user.id,
+        tool_name: toolName,
+        output_content: outputContent,
+        input_summary: inputSummary ?? null,
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } catch {
+      // Silently fail — saving output is non-critical
     }
   }, [user]);
 

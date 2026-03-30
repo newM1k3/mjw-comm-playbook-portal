@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { pb } from '../lib/pocketbase';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 
@@ -29,12 +29,11 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      await pb.collection('users').create({
         email,
         password,
+        passwordConfirm: confirmPassword,
       });
-
-      if (error) throw error;
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Failed to create account');

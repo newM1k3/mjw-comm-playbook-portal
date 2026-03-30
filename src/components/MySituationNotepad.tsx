@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { CreditCard as Edit3, X } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { pb } from '../lib/pocketbase';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function MySituationNotepad() {
@@ -12,7 +12,7 @@ export default function MySituationNotepad() {
   useEffect(() => {
     if (!user) return;
 
-    supabase
+    pb
       .from('user_notes')
       .select('content')
       .eq('user_id', user.id)
@@ -29,7 +29,7 @@ export default function MySituationNotepad() {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => {
       if (!user) return;
-      supabase
+      pb
         .from('user_notes')
         .upsert(
           { user_id: user.id, content: newNotes, updated_at: new Date().toISOString() },

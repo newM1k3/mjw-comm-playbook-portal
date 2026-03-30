@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { pb } from '../../lib/pocketbase';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface LogEntry {
@@ -33,7 +33,7 @@ export default function ConversationLog() {
   useEffect(() => {
     if (!user) return;
 
-    supabase
+    pb
       .from('conversation_log')
       .select('id, entry, created_at')
       .eq('user_id', user.id)
@@ -61,7 +61,7 @@ export default function ConversationLog() {
       whatDifferently: formData.whatDifferently
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await pb
       .from('conversation_log')
       .insert({ user_id: user.id, entry: JSON.stringify(entryPayload) })
       .select('id, entry, created_at')
@@ -86,7 +86,7 @@ export default function ConversationLog() {
     if (!window.confirm('Are you sure you want to delete this entry?')) return;
     if (!user) return;
 
-    const { error } = await supabase
+    const { error } = await pb
       .from('conversation_log')
       .delete()
       .eq('id', id)

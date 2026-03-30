@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { pb } from '../lib/pocketbase';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 
@@ -18,12 +18,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
+      await pb.collection('users').authWithPassword(email, password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
@@ -38,11 +33,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
+      await pb.collection('users').requestPasswordReset(email);
       setResetEmailSent(true);
     } catch (err: any) {
       setError(err.message || 'Failed to send reset email');

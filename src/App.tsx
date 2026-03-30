@@ -19,7 +19,7 @@ import DebriefTool from './components/tools/DebriefTool';
 import ConversationLog from './components/tools/ConversationLog';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
-import { supabase } from './lib/supabase';
+import { pb } from './lib/pocketbase';
 import { useUserProfile } from './hooks/useUserProfile';
 
 export default function App() {
@@ -34,17 +34,18 @@ export default function App() {
   const showOnboardingNew = !profileLoading && !!user && profile === null;
 
   const loadProgress = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('user_progress')
-      .select('chapter_id, completed')
-      .eq('user_id', userId);
-
-    if (!error && data) {
+    try {
+      const records = await pb.collection('user_progress').getFullList({
+        filter: `user_id = "${userId}"`,
+        fields: 'chapter_id,completed',
+      });
       const progress: Record<string, boolean> = {};
-      data.forEach((row) => {
+      records.forEach((row) => {
         progress[row.chapter_id] = row.completed;
       });
       setChapterProgress(progress);
+    } catch {
+      // Progress load failed silently
     }
   }, []);
 
@@ -66,15 +67,26 @@ export default function App() {
     setChapterProgress((prev) => ({ ...prev, [chapterId]: newValue }));
 
     if (user) {
-      await supabase.from('user_progress').upsert(
-        {
-          user_id: user.id,
-          chapter_id: chapterId,
-          completed: newValue,
-          completed_at: newValue ? new Date().toISOString() : null,
-        },
-        { onConflict: 'user_id,chapter_id' }
-      );
+      try {
+        const existing = await pb.collection('user_progress').getList(1, 1, {
+          filter: `user_id = "${user.id}" && chapter_id = "${chapterId}"`,
+        });
+        if (existing.items.length > 0) {
+          await pb.collection('user_progress').update(existing.items[0].id, {
+            completed: newValue,
+            completed_at: newValue ? new Date().toISOString() : null,
+          });
+        } else {
+          await pb.collection('user_progress').create({
+            user_id: user.id,
+            chapter_id: chapterId,
+            completed: newValue,
+            completed_at: newValue ? new Date().toISOString() : null,
+          });
+        }
+      } catch {
+        // Progress save failed silently
+      }
     }
   };
 
