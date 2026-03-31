@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSaveOutput } from '../../hooks/useSaveOutput';
+import { generateText } from '../../lib/gemini';
 
 export default function CCOBlueprint() {
   const [situation, setSituation] = useState('');
@@ -34,24 +35,7 @@ End with one sentence of encouragement.
 User's situation: ${situation}`;
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          prompt: systemPrompt
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate blueprint');
-      }
-
-      const data = await response.json();
-      const generatedText = data.candidates[0]?.content?.parts[0]?.text || 'No response generated';
+      const generatedText = await generateText(systemPrompt);
       setBlueprint(generatedText);
       saveOutput('CCO Blueprint Generator', generatedText, situation.slice(0, 150));
     } catch (err) {

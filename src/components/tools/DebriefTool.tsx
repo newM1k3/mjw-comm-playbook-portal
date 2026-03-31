@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSaveOutput } from '../../hooks/useSaveOutput';
+import { generateText } from '../../lib/gemini';
 
 export default function DebriefTool() {
   const [formData, setFormData] = useState({
@@ -42,24 +43,7 @@ WHAT WORKED: ${formData.whatWorked}
 
 WHAT WOULD THEY CHANGE: ${formData.whatDifferently}`;
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          prompt: prompt
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate coaching note');
-      }
-
-      const data = await response.json();
-      const generatedText = data.candidates[0].content.parts[0].text;
+      const generatedText = await generateText(prompt);
       setCoachingNote(generatedText);
       saveOutput('Post-Conversation Debrief Tool', `DEBRIEF\n\nWhat happened:\n${formData.whatHappened}\n\nWhat worked:\n${formData.whatWorked}\n\nWhat to do differently:\n${formData.whatDifferently}\n\nCoaching Note:\n${generatedText}`, formData.whatHappened.slice(0, 150));
     } catch (err) {

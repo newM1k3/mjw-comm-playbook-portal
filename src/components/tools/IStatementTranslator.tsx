@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useSaveOutput } from '../../hooks/useSaveOutput';
+import { generateText } from '../../lib/gemini';
 
 export default function IStatementTranslator() {
   const [youStatement, setYouStatement] = useState('');
@@ -26,24 +27,7 @@ The user will provide one or more You-Statements. For each one, provide the tran
 User's You-Statements: ${youStatement}`;
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          prompt: systemPrompt
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to translate statement');
-      }
-
-      const data = await response.json();
-      const generatedText = data.candidates[0]?.content?.parts[0]?.text || 'No response generated';
+      const generatedText = await generateText(systemPrompt);
       setTranslation(generatedText);
       saveOutput('I-Statement Translator', `You-Statement:\n${youStatement}\n\nTranslation:\n${generatedText}`, youStatement.slice(0, 150));
     } catch (err) {
