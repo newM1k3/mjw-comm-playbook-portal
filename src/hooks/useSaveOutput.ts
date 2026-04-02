@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { pb } from '../lib/pocketbase';
+import { pb, ensureAuth } from '../lib/pocketbase';
 import { useAuth } from '../contexts/AuthContext';
 
 export function useSaveOutput() {
@@ -14,6 +14,9 @@ export function useSaveOutput() {
     if (!user) return;
 
     try {
+      // Refresh the auth token before writing to prevent stale-token 403s.
+      await ensureAuth();
+
       await pb.collection('saved_outputs').create({
         user_id: user.id,
         tool_name: toolName,

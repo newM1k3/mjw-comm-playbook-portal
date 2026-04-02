@@ -19,7 +19,7 @@ import DebriefTool from './components/tools/DebriefTool';
 import ConversationLog from './components/tools/ConversationLog';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
-import { pb } from './lib/pocketbase';
+import { pb, ensureAuth } from './lib/pocketbase';
 import { useUserProfile } from './hooks/useUserProfile';
 
 export default function App() {
@@ -35,8 +35,10 @@ export default function App() {
 
   const loadProgress = useCallback(async (userId: string) => {
     try {
+      // Single-quoted filter value — PocketBase filter syntax requires single
+      // quotes around string literals.  Double-quoted values risk 400 errors.
       const records = await pb.collection('user_progress').getFullList({
-        filter: `user_id = "${userId}"`,
+        filter: `user_id = '${userId}'`,
         fields: 'chapter_id,completed',
       });
       const progress: Record<string, boolean> = {};
@@ -68,8 +70,12 @@ export default function App() {
 
     if (user) {
       try {
+        // Refresh the auth token before any write to prevent stale-token 403s.
+        await ensureAuth();
+
+        // Single-quoted filter values throughout.
         const existing = await pb.collection('user_progress').getList(1, 1, {
-          filter: `user_id = "${user.id}" && chapter_id = "${chapterId}"`,
+          filter: `user_id = '${user.id}' && chapter_id = '${chapterId}'`,
         });
         if (existing.items.length > 0) {
           await pb.collection('user_progress').update(existing.items[0].id, {

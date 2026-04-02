@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { pb } from '../lib/pocketbase';
+import { pb, ensureAuth } from '../lib/pocketbase';
 
 export interface UserProfile {
   id: string;
@@ -16,8 +16,11 @@ export function useUserProfile(userId: string | undefined) {
   const fetchProfile = useCallback(async (uid: string) => {
     setLoading(true);
     try {
+      // Use single-quoted string values in PocketBase filter expressions.
+      // Double-quoted values (e.g. user_id = "${uid}") can cause 400 Bad
+      // Request errors depending on the string content.
       const records = await pb.collection('user_profiles').getList(1, 1, {
-        filter: `user_id = "${uid}"`,
+        filter: `user_id = '${uid}'`,
       });
       setProfile(records.items.length > 0 ? (records.items[0] as unknown as UserProfile) : null);
     } catch {
@@ -40,9 +43,12 @@ export function useUserProfile(userId: string | undefined) {
     async (displayName: string) => {
       if (!userId) return;
       try {
-        // Check if a profile record already exists
+        // Refresh the auth token before any write to prevent stale-token 403s.
+        await ensureAuth();
+
+        // Single-quoted filter value — matches PocketBase filter syntax spec.
         const existing = await pb.collection('user_profiles').getList(1, 1, {
-          filter: `user_id = "${userId}"`,
+          filter: `user_id = '${userId}'`,
         });
         let record;
         if (existing.items.length > 0) {
@@ -59,7 +65,7 @@ export function useUserProfile(userId: string | undefined) {
         }
         setProfile(record as unknown as UserProfile);
       } catch {
-        // Silently fail
+        // Silently fail — onboarding completion is non-critical UX
       }
     },
     [userId]
