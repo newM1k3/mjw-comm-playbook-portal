@@ -17,6 +17,8 @@ import CCOBlueprint from './components/tools/CCOBlueprint';
 import IStatementTranslator from './components/tools/IStatementTranslator';
 import DebriefTool from './components/tools/DebriefTool';
 import ConversationLog from './components/tools/ConversationLog';
+import PerPlaybookLibrary from './components/per/PerPlaybookLibrary';
+import PerPlaybookReader from './components/per/PerPlaybookReader';
 import { Menu, X } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
 import { pb, ensureAuth } from './lib/pocketbase';
@@ -26,6 +28,9 @@ export default function App() {
   const [currentView, setCurrentView] = useState('introduction');
   const [chapterProgress, setChapterProgress] = useState<Record<string, boolean>>({});
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Track which PER playbook is open (null = show library)
+  const [activePerPlaybookId, setActivePerPlaybookId] = useState<string | null>(null);
+
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { profile, loading: profileLoading, completeOnboarding } = useUserProfile(user?.id);
@@ -98,7 +103,23 @@ export default function App() {
 
   const handleNavClick = (viewId: string) => {
     setCurrentView(viewId);
+    // When navigating away from PER section, clear the active playbook
+    if (!viewId.startsWith('per-')) {
+      setActivePerPlaybookId(null);
+    }
     setIsMobileMenuOpen(false);
+  };
+
+  // Open a specific PER playbook from the library
+  const handleOpenPerPlaybook = (id: string) => {
+    setActivePerPlaybookId(id);
+    setCurrentView('per-playbook-reader');
+  };
+
+  // Return from reader back to library
+  const handleBackToPerLibrary = () => {
+    setActivePerPlaybookId(null);
+    setCurrentView('per-playbook-library');
   };
 
   const chapterOrder = [
@@ -149,6 +170,19 @@ export default function App() {
         return <DebriefTool />;
       case 'conversation-log':
         return <ConversationLog />;
+      // ── PER Playbooks ──────────────────────────────────────────────────────
+      case 'per-playbook-library':
+        return <PerPlaybookLibrary onOpenPlaybook={handleOpenPerPlaybook} />;
+      case 'per-playbook-reader':
+        return activePerPlaybookId ? (
+          <PerPlaybookReader
+            playbookId={activePerPlaybookId}
+            onBack={handleBackToPerLibrary}
+          />
+        ) : (
+          <PerPlaybookLibrary onOpenPlaybook={handleOpenPerPlaybook} />
+        );
+      // ──────────────────────────────────────────────────────────────────────
       default:
         return <Introduction onNextChapter={handleNextChapter} />;
     }

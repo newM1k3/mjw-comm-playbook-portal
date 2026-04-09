@@ -1,5 +1,5 @@
 import Logo from './Logo';
-import { Circle, LogOut } from 'lucide-react';
+import { Circle, LogOut, BookOpen } from 'lucide-react';
 
 interface NavigationProps {
   currentView: string;
@@ -37,6 +37,9 @@ export default function Navigation({
   onLogout,
   displayName,
 }: NavigationProps) {
+  // A view is "inside" the PER section if it starts with 'per-'
+  const isPerView = currentView.startsWith('per-');
+
   return (
     <div className="h-full flex flex-col overflow-y-auto">
       {/* Logo Section */}
@@ -110,6 +113,26 @@ export default function Navigation({
                 {tool.label}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* PER Playbooks Section */}
+        <div>
+          <h3 className="text-[#a0aec0] text-xs font-semibold uppercase tracking-wider mb-3 px-2 pt-4 border-t border-[#2d3748]">
+            PER Playbooks
+          </h3>
+          <div className="space-y-1">
+            <button
+              onClick={() => onNavClick('per-playbook-library')}
+              className={`w-full text-left px-3 py-2 rounded text-sm transition-colors flex items-center gap-2 ${
+                isPerView
+                  ? 'bg-[#00e5ff] bg-opacity-10 text-[#00e5ff]'
+                  : 'text-[#e2e8f0] hover:bg-[#2d3748]'
+              }`}
+            >
+              <BookOpen size={13} className="flex-shrink-0" />
+              Playbook Library
+            </button>
           </div>
         </div>
       </div>
