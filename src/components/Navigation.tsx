@@ -27,6 +27,7 @@ const tools = [
   { id: 'i-statement-translator', label: 'I-Statement Translator' },
   { id: 'debrief-tool', label: 'Debrief Tool' },
   { id: 'conversation-log', label: 'Conversation Log' },
+  { id: 'avoidance-calculator', label: 'Avoidance Cost Calculator' },
 ];
 
 export default function Navigation({

@@ -17,6 +17,7 @@ import CCOBlueprint from './components/tools/CCOBlueprint';
 import IStatementTranslator from './components/tools/IStatementTranslator';
 import DebriefTool from './components/tools/DebriefTool';
 import ConversationLog from './components/tools/ConversationLog';
+import AvoidanceCalculator from './components/tools/AvoidanceCalculator';
 import PerPlaybookLibrary from './components/per/PerPlaybookLibrary';
 import PerPlaybookReader from './components/per/PerPlaybookReader';
 import { Menu, X } from 'lucide-react';
@@ -170,6 +171,8 @@ export default function App() {
         return <DebriefTool />;
       case 'conversation-log':
         return <ConversationLog />;
+      case 'avoidance-calculator':
+        return <AvoidanceCalculator />;
       // ── PER Playbooks ──────────────────────────────────────────────────────
       case 'per-playbook-library':
         return <PerPlaybookLibrary onOpenPlaybook={handleOpenPerPlaybook} />;

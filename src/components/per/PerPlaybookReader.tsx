@@ -1,18 +1,63 @@
 import { useState } from 'react';
-import { ArrowLeft, CheckCircle, Circle, Lock, CreditCard } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Circle, Lock, CreditCard, AlertCircle } from 'lucide-react';
 import { usePerPlaybook, usePerPlaybookAccess } from '../../hooks/usePerPlaybooks';
 import { useAuth } from '../../contexts/AuthContext';
+import { stripePromise } from '../../lib/stripe';
 
 interface PerPlaybookReaderProps {
   playbookId: string;
   onBack: () => void;
 }
 
-function LockScreen({ price, title }: { price: number; title: string }) {
-  const handlePurchase = () => {
-    // TODO: Wire up to Netlify Function create-checkout-session
-    // POST { priceId, userId, appSlug: 'per-playbook', playbookTitle: title }
-    console.log('Initiate Stripe Checkout for PER Playbook:', title);
+interface LockScreenProps {
+  price: number;
+  title: string;
+  playbookId: string;
+  userId: string;
+}
+
+function LockScreen({ price, title, playbookId, userId }: LockScreenProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePurchase = async () => {
+    if (!userId) {
+      setError('You must be logged in to purchase.');
+      return;
+    }
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playbookId, userId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create checkout session');
+      }
+
+      const { sessionId } = await response.json();
+      const stripe = await stripePromise;
+
+      if (!stripe) {
+        throw new Error('Stripe failed to initialise. Please refresh and try again.');
+      }
+
+      // Redirect to Stripe-hosted checkout page
+      // redirectToCheckout is available in @stripe/stripe-js v1.x
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: stripeError } = await (stripe as any).redirectToCheckout({ sessionId });
+      if (stripeError) throw new Error(stripeError.message);
+    } catch (err) {
+      console.error('Purchase error:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred during checkout.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,14 +96,31 @@ function LockScreen({ price, title }: { price: number; title: string }) {
               </div>
               <p className="text-xs text-[#a0aec0]">One-time purchase · Lifetime access</p>
             </div>
+            {error && (
+              <div className="mb-4 flex items-start gap-2 p-3 bg-red-900 bg-opacity-30 border border-red-700 rounded-lg text-left">
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-red-300 text-xs">{error}</p>
+              </div>
+            )}
+
             <button
               onClick={handlePurchase}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded flex items-center justify-center gap-2 transition-colors"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded flex items-center justify-center gap-2 transition-colors"
             >
-              <CreditCard className="w-5 h-5" />
-              Buy Now
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <CreditCard className="w-5 h-5" />
+                  Buy Now — ${price.toFixed(2)}
+                </>
+              )}
             </button>
-            <p className="text-xs text-[#4a5568] mt-4">Secure payment powered by Stripe</p>
+            <p className="text-xs text-[#4a5568] mt-4 flex items-center justify-center gap-1">
+              <Lock className="w-3 h-3" />
+              Secure payment powered by Stripe
+            </p>
           </div>
         </div>
       </div>
@@ -238,7 +300,12 @@ export default function PerPlaybookReader({ playbookId, onBack }: PerPlaybookRea
           </div>
         ) : (
           <div className="p-6">
-            <LockScreen price={playbook.price} title={playbook.title} />
+            <LockScreen
+              price={playbook.price}
+              title={playbook.title}
+              playbookId={playbookId}
+              userId={user?.id ?? ''}
+            />
           </div>
         )}
       </div>
