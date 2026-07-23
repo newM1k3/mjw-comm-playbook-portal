@@ -72,7 +72,6 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 style={{
                   background: '#111827',
                   border: '1px solid #1a3a3a',
-                  focusRingColor: '#00b4b4',
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#00b4b4';

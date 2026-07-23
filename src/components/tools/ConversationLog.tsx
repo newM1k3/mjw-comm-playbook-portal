@@ -15,7 +15,6 @@ interface LogEntry {
 interface DbRow {
   id: string;
   entry: string;
-  created_at: string;
 }
 
 export default function ConversationLog() {
@@ -34,19 +33,16 @@ export default function ConversationLog() {
     if (!user) return;
 
     pb
-      .from('conversation_log')
-      .select('id, entry, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) {
-          const parsed: LogEntry[] = (data as DbRow[]).map((row) => ({
-            id: row.id,
-            ...JSON.parse(row.entry)
-          }));
-          setEntries(parsed);
-        }
-      });
+      .collection('conversation_log')
+      .getFullList<DbRow>({ filter: `user_id="${user.id}"`, sort: '-created' })
+      .then((rows) => {
+        const parsed: LogEntry[] = rows.map((row) => ({
+          id: row.id,
+          ...JSON.parse(row.entry)
+        }));
+        setEntries(parsed);
+      })
+      .catch(() => {});
   }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,15 +57,14 @@ export default function ConversationLog() {
       whatDifferently: formData.whatDifferently
     };
 
-    const { data, error } = await pb
-      .from('conversation_log')
-      .insert({ user_id: user.id, entry: JSON.stringify(entryPayload) })
-      .select('id, entry, created_at')
-      .single();
-
-    if (!error && data) {
-      const newEntry: LogEntry = { id: data.id, ...JSON.parse(data.entry) };
+    try {
+      const rec = await pb
+        .collection('conversation_log')
+        .create<DbRow>({ user_id: user.id, entry: JSON.stringify(entryPayload) });
+      const newEntry: LogEntry = { id: rec.id, ...JSON.parse(rec.entry) };
       setEntries([newEntry, ...entries]);
+    } catch {
+      // save failed — leave entries unchanged
     }
 
     setFormData({
@@ -86,14 +81,12 @@ export default function ConversationLog() {
     if (!window.confirm('Are you sure you want to delete this entry?')) return;
     if (!user) return;
 
-    const { error } = await pb
-      .from('conversation_log')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id);
-
-    if (!error) {
+    try {
+      // The deleteRule (user_id = @request.auth.id) enforces ownership server-side.
+      await pb.collection('conversation_log').delete(id);
       setEntries(entries.filter(entry => entry.id !== id));
+    } catch {
+      // delete failed — leave entries unchanged
     }
   };
 

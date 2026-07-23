@@ -13,13 +13,10 @@ export default function MySituationNotepad() {
     if (!user) return;
 
     pb
-      .from('user_notes')
-      .select('content')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setNotes(data.content);
-      });
+      .collection('user_notes')
+      .getFirstListItem<{ content: string }>(`user_id="${user.id}"`)
+      .then((rec) => setNotes(rec.content ?? ''))
+      .catch(() => {}); // no saved note yet
   }, [user]);
 
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -27,15 +24,16 @@ export default function MySituationNotepad() {
     setNotes(newNotes);
 
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => {
+    saveTimeout.current = setTimeout(async () => {
       if (!user) return;
-      pb
-        .from('user_notes')
-        .upsert(
-          { user_id: user.id, content: newNotes, updated_at: new Date().toISOString() },
-          { onConflict: 'user_id' }
-        )
-        .then(() => {});
+      const payload = { user_id: user.id, content: newNotes };
+      try {
+        // PocketBase has no upsert; the unique user_id index means at most one row per user.
+        const existing = await pb.collection('user_notes').getFirstListItem(`user_id="${user.id}"`);
+        await pb.collection('user_notes').update(existing.id, payload);
+      } catch {
+        await pb.collection('user_notes').create(payload);
+      }
     }, 800);
   };
 
